@@ -1,1 +1,845 @@
-# Lodjso
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Smiley_hacker gui😈",
+   Icon = 0,
+   LoadingTitle = "SMILEY_HACKER😁",
+   LoadingSubtitle = "by smiley_hacker",
+   ShowText = "SMILEY_HACKER😈",
+   Theme = "Default",
+   ToggleUIKeybind = Enum.KeyCode.K,
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false,
+   ConfigurationSaving = {
+      Enabled = false,
+      FolderName = nil,
+      FileName = "Big Hub"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   KeySystem = true,
+   KeySettings = {
+      Title = "smiley_hackers key system",
+      Subtitle = ":)",
+      Note = "https://pastebin.com/y1eeMJqU",
+      FileName = "smiley_hacker",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"smile:)"}
+   }
+})
+
+-- TABS & SECTIONS
+local AimTab = Window:CreateTab("AimBot Guis 🔫", nil)
+local AimSection = AimTab:CreateSection("AimBot 🔫")
+
+local VisualTab = Window:CreateTab("Visual Guis👀", nil)
+local VisualSection = VisualTab:CreateSection("ESP Guis")
+
+local MovementTab = Window:CreateTab("Movement", nil)
+local MovementSection = MovementTab:CreateSection("WalkSpeed")
+
+local GuisTab = Window:CreateTab("Other Guis", nil)
+local GuisSection = GuisTab:CreateSection("OP Guis")
+-- ==============================================
+-- FIXED ESP
+-- ==============================================
+local hue = 0
+local rainbowSpeed = 2
+local espRunning = false
+local espConnections = {}
+local espObjects = {}
+local currentRainbowColor = Color3.new(1, 0, 0)
+
+local function getRainbowColor(deltaTime)
+    hue = (hue + deltaTime * rainbowSpeed) % 1
+    return Color3.fromHSV(hue, 1, 1)
+end
+
+local function startESP()
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local LocalPlayer = Players.LocalPlayer
+    local Camera = workspace.CurrentCamera
+
+    local ESP = {
+        Enabled = true,
+        ShowTeamColor = false,
+        ShowHealthBar = true,
+        TextSize = 14,
+        BoxThickness = 2,
+        BoxTransparency = 0.5,
+        TextTransparency = 0,
+        HealthBarThickness = 2,
+        HealthBarWidth = 50,
+        HealthBarHeight = 5,
+        MaxDistance = 5000,
+    }
+
+    local function CreateESPForPlayer(player)
+        if player == LocalPlayer then return end
+
+        local espObject = {}
+        espObject.Box = Drawing.new("Square")
+        espObject.Box.Visible = false
+        espObject.Box.Thickness = ESP.BoxThickness
+        espObject.Box.Transparency = ESP.BoxTransparency
+        espObject.Box.Filled = false
+
+        espObject.Text = Drawing.new("Text")
+        espObject.Text.Visible = false
+        espObject.Text.Size = ESP.TextSize
+        espObject.Text.Center = true
+        espObject.Text.Outline = true
+        espObject.Text.Transparency = ESP.TextTransparency
+
+        espObject.HealthBG = Drawing.new("Square")
+        espObject.HealthBG.Visible = false
+        espObject.HealthBG.Thickness = ESP.HealthBarThickness
+        espObject.HealthBG.Filled = true
+        espObject.HealthBG.Color = Color3.fromRGB(100, 100, 100)
+        espObject.HealthBG.Transparency = 0.7
+
+        espObject.HealthBar = Drawing.new("Square")
+        espObject.HealthBar.Visible = false
+        espObject.HealthBar.Thickness = ESP.HealthBarThickness
+        espObject.HealthBar.Filled = true
+        espObject.HealthBar.Transparency = 0.7
+
+        espObjects[player] = espObject
+
+        table.insert(espConnections, player.AncestryChanged:Connect(function()
+            if not player:IsDescendantOf(game) then
+                if espObjects[player] then
+                    for _, object in pairs(espObjects[player]) do
+                        object:Remove()
+                    end
+                    espObjects[player] = nil
+                end
+            end
+        end))
+    end
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then CreateESPForPlayer(player) end
+    end
+
+    table.insert(espConnections, Players.PlayerAdded:Connect(CreateESPForPlayer))
+    table.insert(espConnections, Players.PlayerRemoving:Connect(function(player)
+        if espObjects[player] then
+            for _, object in pairs(espObjects[player]) do object:Remove() end
+            espObjects[player] = nil
+        end
+    end))
+
+    local function GetHealthColor(health, maxHealth)
+        local percent = health / maxHealth
+        return Color3.new(math.clamp(2*(1-percent),0,1), math.clamp(2*percent,0,1), 0)
+    end
+
+    local renderConn = RunService.RenderStepped:Connect(function(deltaTime)
+        currentRainbowColor = getRainbowColor(deltaTime)
+        if not ESP.Enabled then
+            for _, obj in pairs(espObjects) do for _, d in pairs(obj) do d.Visible = false end end
+            return
+        end
+
+        for player, obj in pairs(espObjects) do
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local humanoid = char and char:FindFirstChild("Humanoid")
+            if not root or not humanoid then
+                for _, d in pairs(obj) do d.Visible = false end
+                continue
+            end
+
+            local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
+            local dist = (root.Position - Camera.CFrame.Position).Magnitude
+            if not onScreen or dist > ESP.MaxDistance then
+                for _, d in pairs(obj) do d.Visible = false end
+                continue
+            end
+
+            local topVec = Camera:WorldToViewportPoint(root.Position + Vector3.new(0,3,0))
+            local bottomVec = Camera:WorldToViewportPoint(root.Position - Vector3.new(0,3,0))
+            local height = math.abs(topVec.Y - bottomVec.Y)
+            local width = height * 0.6
+
+            obj.Box.Position = Vector2.new(pos.X - width/2, pos.Y - height/2)
+            obj.Box.Size = Vector2.new(width, height)
+            obj.Box.Color = currentRainbowColor
+            obj.Box.Visible = true
+
+            obj.Text.Position = Vector2.new(pos.X, pos.Y - height/2 - 20)
+            obj.Text.Text = string.format("%s [%.0f%%]", player.Name, (humanoid.Health/humanoid.MaxHealth)*100)
+            obj.Text.Color = currentRainbowColor
+            obj.Text.Visible = true
+
+            obj.HealthBG.Position = Vector2.new(pos.X - ESP.HealthBarWidth/2, pos.Y - height/2 - 10)
+            obj.HealthBG.Size = Vector2.new(ESP.HealthBarWidth, ESP.HealthBarHeight)
+            obj.HealthBG.Visible = ESP.ShowHealthBar
+
+            local hpPercent = humanoid.Health/humanoid.MaxHealth
+            obj.HealthBar.Position = Vector2.new(pos.X - ESP.HealthBarWidth/2, pos.Y - height/2 - 10)
+            obj.HealthBar.Size = Vector2.new(ESP.HealthBarWidth * hpPercent, ESP.HealthBarHeight)
+            obj.HealthBar.Color = GetHealthColor(humanoid.Health, humanoid.MaxHealth)
+            obj.HealthBar.Visible = ESP.ShowHealthBar
+        end
+    end)
+    table.insert(espConnections, renderConn)
+    print("Rainbow ESP loaded!")
+end
+
+local function stopESP()
+    for _, obj in pairs(espObjects) do for _, d in pairs(obj) do d:Remove() end end
+    espObjects = {}
+    for _, conn in pairs(espConnections) do conn:Disconnect() end
+    espConnections = {}
+    espRunning = false
+    print("Rainbow ESP unloaded!")
+end
+
+local VisualToggle = VisualTab:CreateToggle({
+   Name = "Smiley_hackers ESP",
+   CurrentValue = false,
+   Flag = "ESP_Toggle", -- UNIQUE FLAG
+   Callback = function(Value)
+        if Value and not espRunning then
+            espRunning = true
+            startESP()
+        elseif not Value and espRunning then
+            stopESP()
+        end
+   end,
+})
+
+-- ==============================================
+-- AIMBOT BUTTONS
+-- ==============================================
+local AimButton1 = AimTab:CreateButton({
+   Name = "Equinox AimBot Gui",
+   Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Equinox-Hub/main/Aimbots/directions.lua", true))()
+   end,
+})
+
+local AimButton2 = AimTab:CreateButton({
+   Name = "LunaHub🔥",
+   Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/UnoXLuna/Luna-Hub/refs/heads/main/Script-Loader"))()
+   end,
+})
+
+-- ==============================================
+-- WALKspeed SLIDER & INFINITE JUMP
+-- ==============================================
+local MovementSlider = MovementTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {0, 600},
+   Increment = 1,
+   Suffix = "WalkSpeed",
+   CurrentValue = 16,
+   Flag = "WalkSpeed_Slider", -- UNIQUE FLAG
+   Callback = function(Value)
+        local localPlayer = game.Players.LocalPlayer
+        local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then humanoid.WalkSpeed = Value end
+   end,
+})
+
+local MovementToggle_InfJump = MovementTab:CreateToggle({ -- UNIQUE NAME
+   Name = "inf jump",
+   CurrentValue = false,
+   Flag = "InfJump_Toggle", -- UNIQUE FLAG
+   Callback = function(Value)
+        local UserInputService = game:GetService("UserInputService")
+        local localPlayer = game.Players.LocalPlayer
+
+        -- Disconnect existing connection first to avoid duplicates
+        if _G.InfJumpConn then _G.InfJumpConn:Disconnect() end
+
+        if Value then
+            _G.InfJumpConn = UserInputService.JumpRequest:Connect(function()
+                local char = localPlayer.Character
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if humanoid then humanoid:ChangeState("Jumping") end
+            end)
+        end
+   end,
+})
+
+-- ==============================================
+-- FIXED NOCLIP (GUI TOGGLE ONLY - NO EXTRA BUTTON/KEYBIND)
+-- ==============================================
+local noclipEnabled = false
+local noclipRenderConn = nil -- Track render connection to avoid duplicates
+
+local MovementToggle_NoClip = MovementTab:CreateToggle({ -- UNIQUE NAME
+   Name = "NoClip",
+   CurrentValue = false,
+   Flag = "NoClip_Toggle", -- UNIQUE FLAG
+   Callback = function(Value)
+        noclipEnabled = Value
+        local localPlayer = game.Players.LocalPlayer
+
+        -- Disconnect existing render connection if it exists
+        if noclipRenderConn then
+            noclipRenderConn:Disconnect()
+            noclipRenderConn = nil
+        end
+
+        -- If NoClip is on, start render loop; if off, reset collision
+        if Value then
+            local RunService = game:GetService("RunService")
+            noclipRenderConn = RunService.RenderStepped:Connect(function()
+                local char = localPlayer.Character
+                if not char then return end
+                -- Efficiently set CanCollide off for all BaseParts (no loop every wait())
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end)
+        else
+            local char = localPlayer.Character
+            if char then
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then part.CanCollide = true end
+                end
+                end
+        end
+   end,
+})
+
+local GuisButton = GuisTab:CreateButton({
+   Name = "Infinite Yield",
+   Callback = function()
+   loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+   end,
+})
+local MovementButton = MovementTab:CreateButton({
+   Name = "Fly Gui v3",
+   Callback = function()
+   --[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+   end,
+})
+local GuisButton = GuisTab:CreateButton({
+   Name = "OP Troll is a pinning tower Gui",
+   Callback = function()
+   --[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://raw.githubusercontent.com/aaaa45451619/SLAPP-all-prayer/refs/heads/145/Troll%20Tower%202%20Free"))()
+   end,
+})
+local GuisButton = GuisTab:CreateButton({
+   Name = "AirHub Gui",
+   Callback = function()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/Exunys/AirHub/main/AirHub.lua"))()
+   end,
+})
+
+local FOVSlider = MovementTab:CreateSlider({
+   Name = "Field of View",
+   Range = {30, 120},
+   Increment = 1,
+   Suffix = "FOV",
+   CurrentValue = 70,
+   Flag = "FOV_Slider",
+   Callback = function(Value)
+        workspace.CurrentCamera.FieldOfView = Value
+   end,
+})
+
+-- ==============================================
+-- SPIN BOT + FOV + SPEED
+-- ==============================================
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local spinConnection
+local spinningEnabled = false
+
+local TARGET_FOV = 120
+local TARGET_SPEED = 60
+
+-- Apply movement boosts
+local function applyBoosts()
+    local cam = Workspace.CurrentCamera
+    if cam then
+        cam.FieldOfView = TARGET_FOV
+    end
+
+    local char = player.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = TARGET_SPEED
+        end
+    end
+end
+
+-- Start spinning
+local function startSpin()
+    local char = player.Character
+    if not char then return end
+
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local camera = Workspace.CurrentCamera
+
+    -- Camera zoom
+    player.CameraMode = Enum.CameraMode.Classic
+    camera.CameraType = Enum.CameraType.Custom
+    player.CameraMinZoomDistance = 15
+    player.CameraMaxZoomDistance = 15
+
+    applyBoosts()
+
+    if spinConnection then
+        spinConnection:Disconnect()
+    end
+
+    spinConnection = RunService.RenderStepped:Connect(function(dt)
+        if root and spinningEnabled then
+            root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(99999)*dt, 0)
+        end
+    end)
+end
+
+-- Reapply after respawn
+player.CharacterAdded:Connect(function()
+    if spinningEnabled then
+        task.wait(0.5)
+        startSpin()
+    end
+end)
+
+-- Rayfield Toggle
+local MovementToggle_Spin = MovementTab:CreateToggle({
+   Name = "Spin Bot",
+   CurrentValue = false,
+   Flag = "Spin_Toggle",
+   Callback = function(Value)
+        spinningEnabled = Value
+
+        if Value then
+            startSpin()
+        else
+            if spinConnection then
+                spinConnection:Disconnect()
+                spinConnection = nil
+            end
+
+            -- Restore defaults
+            local cam = Workspace.CurrentCamera
+            if cam then
+                cam.FieldOfView = 70
+            end
+
+            local char = player.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.WalkSpeed = 16
+                end
+            end
+
+            player.CameraMinZoomDistance = 0.5
+            player.CameraMaxZoomDistance = 128
+        end
+   end,
+})
+
+local Button = GuisTab:CreateButton({
+Name = "dmon gui",
+Callback = function()
+loadstring(game:HttpGet("http://dmonmods.xyz/loader.txt"))()
+end,
+})
+
+local AimButton = AimTab:CreateButton({
+   Name = " OP!!!",
+   Callback = function()
+       --[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+loadstring(game:HttpGet("https://pastebin.com/raw/uBsYYmVP"))()
+   end,
+})
+
+local AimButton = AimTab:CreateButton({
+   Name = "ai aimbot",
+   Callback = function()
+       local v0=string.char;local v1=string.byte;local v2=string.sub;local v3=bit32 or bit ;local v4=v3.bxor;local v5=table.concat;local v6=table.insert;local function v7(v54,v55) local v56=511 -(276 + 235) ;local v57;while true do if (v56==(1 -0)) then return v5(v57);end if (v56==(0 -0)) then local v110=0 -0 ;while true do if (v110==(0 + 0)) then v57={};for v133=3 -2 , #v54 do v6(v57,v0(v4(v1(v2(v54,v133,v133 + (1748 -(760 + 987)) )),v1(v2(v55,1 + (v133% #v55) ,(1914 -(1789 + 124)) + (v133% #v55) + 1 )))%(1022 -(745 + 21)) ));end v110=1 + 0 ;end if (v110==(2 -1)) then v56=3 -2 ;break;end end end end end local v8=1 + 23 + 139 + 37 ;local v9=game:GetService(v7("\227\214\213\22\227\169\209\23\210\198","\126\177\163\187\69\134\219\167"));local v10=game:GetService(v7("\22\222\47\215\213\45\221\63\209\207\38\223\60\204\255\38","\156\67\173\74\165"));local v11=workspace.CurrentCamera;local v12=game:GetService(v7("\4\187\72\15\185\52\85","\38\84\215\41\118\220\70"));local v13=v12.LocalPlayer;local v14=Drawing.new(v7("\115\31\48\17\242\85","\158\48\118\66\114"));v14.Visible=false;v14.Thickness=1337 -((1233 -(87 + 968)) + (5092 -3935)) ;v14.Color=Color3.fromRGB((852 + 87) -(569 + (546 -304)) ,(1413 -(447 + 966)) + (0 -0) ,(2085 -(1703 + 114)) -140 );v14.Filled=false;v14.Radius=v8;v14.Position=v11.ViewportSize/((1965 -(376 + 325)) -((1787 -696) + (526 -355))) ;local v21=false;local v22={};local v23=RaycastParams.new();v23.FilterType=Enum.RaycastFilterType.Blacklist;local v26=Instance.new(v7("\152\39\2\51\118\171\220\190\45","\155\203\68\112\86\19\197"));v26.Parent=game.CoreGui;local v29=Instance.new(v7("\114\216\46\232\98\109\241\236\73\211","\152\38\189\86\156\32\24\133"));v29.Size=UDim2.new(0 + 0 + (0 -0) ,(391 -(9 + 5)) -(633 -(85 + 291)) ,0,132 -(1357 -(243 + 1022)) );v29.Position=UDim2.new((4760 -3509) -(595 + 126 + 530) ,(2461 -(1123 + 57)) -(769 + 176 + 326) ,(628 -(163 + 91)) -((2053 -(1869 + 61)) + 251) ,(14 + 35) -(137 -98) );v29.Text=v7("\221\126\138\100\211\99\253\6\211\113\129","\38\156\55\199");v29.BackgroundColor3=Color3.fromRGB((1117 -389) -(29 + 179 + 490) ,(3 -0) + 26 + 1 ,14 + (1490 -(1329 + 145)) );v29.TextColor3=Color3.fromRGB((1206 -(140 + 831)) + (1870 -(1409 + 441)) ,(1604 -(15 + 703)) -(306 + 354 + (614 -(262 + 176))) ,(1728 -(345 + 1376)) + (731 -(198 + 490)) );v29.Font=Enum.Font.GothamBold;v29.TextSize=(5752 -4450) -((2381 -1388) + (1501 -(696 + 510))) ;v29.Parent=v26;local function v39(v58) return v58:IsA(v7("\133\114\120\45\31","\35\200\29\28\72\115\20\154")) and v58:FindFirstChild(v7("\49\170\220\222\131\35\61\29","\84\121\223\177\191\237\76")) and (v58.Humanoid.Health>((423 -221) -((1276 -(1091 + 171)) + 31 + 157))) and v58:FindFirstChild(v7("\147\83\200\164","\161\219\54\169\192\90\48\80")) and v58:FindFirstChild(v7("\97\87\13\36\71\77\9\33\123\77\15\49\121\67\18\49","\69\41\34\96")) and ( not v12:GetPlayerFromCharacter(v58) or (v12:GetPlayerFromCharacter(v58)~=v13)) ;end local function v40() local v59=(2125 -1450) -(534 + (467 -326)) ;local v60;while true do if ((1 + (374 -(123 + 251)))==v59) then for v118= #v22,1172 -((2077 -1659) + (1451 -(208 + 490))) , -(1 + 0) do if  not v60[v22[v118]] then table.remove(v22,v118);end end for v119 in pairs(v60) do if  not table.find(v22,v119) then table.insert(v22,v119);end end break;end if (v59==(0 + 0)) then v60={};for v120,v121 in ipairs(workspace:GetDescendants()) do if v39(v121) then v60[v121]=true;end end v59=(1 + 0) -(0 + 0) ;end end end local function v41(v61) if v39(v61) then table.insert(v22,v61);local v107=v61:WaitForChild(v7("\148\214\218\11\12\36\181\199","\75\220\163\183\106\98"));v107.Destroying:Connect(function() for v122= #v22,(837 -(660 + 176)) -(0 + 0) , -(2 -(203 -(14 + 188))) do if (v22[v122]==v61) then table.remove(v22,v122);break;end end end);end end workspace.DescendantAdded:Connect(v41);local function v42() local v62=0;local v63;local v64;while true do if (v62==(676 -(534 + 141))) then while true do if (v63==(0 + 0 + 0 + 0)) then v64=529 -(406 + 119 + 4) ;while true do if (v64==((831 -435) -((182 -67) + (788 -507)))) then v14.Position=v11.ViewportSize/(1 + 1 + 0) ;v14.Radius=v8 * (v11.ViewportSize.Y/((1600 + 912) -(1828 -(115 + 281)))) ;break;end end break;end end break;end if (v62==0) then v63=(0 -0) + 0 + 0 ;v64=nil;v62=2 -1 ;end end end local function v43(v65) local v66=1322 -(1249 + (267 -194)) ;local v67;local v68;local v69;local v70;local v71;local v72;while true do local v100=0;local v101;while true do if ((867 -(550 + 317))==v100) then v101=0;while true do if (v101==1) then if (v66==((5 -1) -2)) then v70=(0.02 -0) -0 ;v71=v67.Position + (v69 * v70) ;v66=8 -5 ;end if (v66==((1153 -(134 + 151)) -((2215 -(970 + 695)) + (604 -287)))) then local v138=0;while true do if (v138==1) then v66=(1992 -(582 + 1408)) -(0 -0) ;break;end if (v138==(0 -0)) then if ( not v67 or  not v68) then return (v68 and v68.Position) or (v67 and v67.Position) ;end v69=v67.Velocity;v138=1;end end end break;end if (v101==(0 -0)) then if (((1824 -(1195 + 629)) + (0 -0))==v66) then v67=v65:FindFirstChild(v7("\42\175\134\54\215\13\179\143\5\214\13\174\187\54\203\22","\185\98\218\235\87"));v68=v65:FindFirstChild(v7("\227\57\38\226","\202\171\92\71\134\190"));v66=(242 -(187 + 54)) + 0 ;end if (v66==((1928 -(162 + 618)) -(327 + 139 + 453 + 226))) then local v139=0 -0 ;while true do if (v139==(0 -0)) then v72=v68.Position-v67.Position ;return v71 + v72 ;end end end v101=1 + 0 ;end end break;end end end end local function v44() local v73=nil;local v74=math.huge;local v75=v11.ViewportSize/(1638 -(1373 + 263)) ;v23.FilterDescendantsInstances={v13.Character};for v102,v103 in ipairs(v22) do local v104=v43(v103);local v105,v106=v11:WorldToViewportPoint(v104);if (v106 and (v105.Z>((1000 -(451 + 549)) -(0 + 0)))) then local v111=0 -0 ;local v112;local v113;while true do if (v111==1) then while true do if (v112==((2798 -1133) -((2354 -(746 + 638)) + 695))) then v113=workspace:Raycast(v11.CFrame.Position,(v104-v11.CFrame.Position).Unit * ((719 + 1189) -(1378 -470)) ,v23);if (v113 and v113.Instance:IsDescendantOf(v103)) then local v142=341 -(218 + 123) ;local v143;local v144;while true do if (v142==(1581 -(1535 + 46))) then v143=1990 -(582 + 1408) ;v144=nil;v142=1 + 0 ;end if (v142==1) then while true do if (v143==0) then v144=(Vector2.new(v105.X,v105.Y) -v75).Magnitude;if ((v144<v74) and (v144<v8)) then local v156=0 + 0 ;local v157;local v158;while true do if (v156==(561 -(306 + 254))) then while true do if (v157==(0 + 0)) then v158=0;while true do if (v158==((0 -0) -(1467 -(899 + 568)))) then v74=v144;v73=v103;break;end end break;end end break;end if ((0 + 0)==v156) then v157=(0 -0) -0 ;v158=nil;v156=604 -(268 + 335) ;end end end break;end end break;end end end break;end end break;end if (v111==0) then v112=285 -(134 + (441 -(60 + 230))) ;v113=nil;v111=573 -(426 + 146) ;end end end end return v73;end local function v45(v77) local v78=114 -(1 + 3 + 110) ;local v79;local v80;local v81;local v82;local v83;while true do if (v78==((1459 -(282 + 1174)) -(813 -(569 + 242)))) then local v114=0 -0 ;local v115;while true do if (v114==(0 + 0)) then v115=1024 -(706 + 318) ;while true do if (v115==1) then v78=(3077 -(721 + 530)) -(1195 + 629) ;break;end if (v115==(1271 -(945 + 326))) then v81=nil;v82=nil;v115=2 -1 ;end end break;end end end if (v78==((2 + 0) -(700 -(271 + 429)))) then v83=nil;while true do if (v79==((224 + 19) -((1687 -(1408 + 92)) + 54))) then v11.CFrame=CFrame.new(v80.Position,v80.Position + v83 );break;end if (v79==(1087 -(461 + 625))) then local v125=0;local v126;while true do if (v125==(1288 -(993 + 295))) then v126=0 + 0 ;while true do if (v126==1) then v79=(1173 -(418 + 753)) + 0 + 0 ;break;end if (v126==(0 + 0)) then v82=781.581 -(48 + 114 + 157 + 461) ;v83=v80.LookVector:Lerp(v81,v82);v126=530 -(406 + 123) ;end end break;end end end if (v79==(0 + (1769 -(1749 + 20)))) then local v127=0;local v128;while true do if (v127==(0 + 0)) then v128=0;while true do if (v128==((1323 -(1249 + 73)) -(0 + 0))) then v79=(1146 -(466 + 679)) -0 ;break;end if (v128==((399 -233) -(122 + (125 -81)))) then v80=v11.CFrame;v81=(v77-v80.Position).Unit;v128=1 + (1900 -(106 + 1794)) ;end end break;end end end end break;end if (v78==(0 + 0)) then local v116=0;while true do if (v116==(0 + 0)) then v79=(4829 -3193) -((3717 -2344) + (377 -(4 + 110))) ;v80=nil;v116=585 -(57 + 527) ;end if (v116==(1428 -(41 + 1386))) then v78=(1104 -(17 + 86)) -(307 + 144 + (1223 -674)) ;break;end end end end end local v46=v9.Heartbeat;local v47=(0 -0) + (166 -(122 + 44)) ;local v48=0.4 -0 ;v46:Connect(function(v84) local v85=0;local v86;local v87;while true do if (v85==(0 -0)) then v86=0 + 0 + 0 + 0 ;v87=nil;v85=1 -0 ;end if ((66 -(30 + 35))==v85) then while true do if (v86==(0 -0)) then v87=0 + 0 ;while true do if (v87==(1 -0)) then if (v47>=v48) then local v145=0;while true do if (v145==0) then v40();v47=65 -((1287 -(1043 + 214)) + (132 -97)) ;break;end end end if v21 then local v146=v44();if v146 then local v151=1212 -(323 + 889) ;local v152;local v153;while true do if (v151==1) then while true do if (v152==((3725 -2341) -((1326 -(361 + 219)) + (958 -(53 + 267))))) then v153=v43(v146);v45(v153);break;end end break;end if (v151==0) then local v154=0 + 0 ;while true do if (v154==(414 -(15 + 398))) then v151=1;break;end if (v154==(982 -(18 + 964))) then v152=0 -(0 -0) ;v153=nil;v154=1 + 0 ;end end end end end end break;end if (v87==(0 + 0 + 0)) then local v140=0;while true do if (v140==(851 -(20 + 830))) then v87=(3 + 0) -(128 -(116 + 10)) ;break;end if (v140==(0 + 0)) then v42();v47=v47 + v84 ;v140=739 -(542 + 196) ;end end end end break;end end break;end end end);v29.MouseButton1Click:Connect(function() local v88=(2597 -1385) -(323 + 260 + 629) ;local v89;while true do if (v88==((0 + 0) -(0 + 0))) then v89=(1528 -948) -((925 -564) + (1770 -(1126 + 425))) ;while true do if (v89==((406 -(118 + 287)) -(0 -0))) then v29.Text=v7("\8\232\1\170\6\245\118\200","\232\73\161\76")   .. ((v21 and v7("\148\247","\126\219\185\34\61")) or v7("\35\232\120","\135\108\174\62\18\30\23\147")) ;v29.TextColor3=(v21 and Color3.fromRGB((1512 -(118 + 1003)) -((637 -419) + (500 -(142 + 235))) ,58 + (893 -696) ,463 -(4 + 11 + (1375 -(553 + 424))) )) or Color3.fromRGB(1836 -((2902 -1367) + 41 + 5) ,50 + 0 + 0 ,17 + 12 + 21 ) ;break;end if ((0 + 0 + 0)==v89) then local v131=0;while true do if ((0 + 0)==v131) then v21= not v21;v14.Visible=v21;v131=2 -1 ;end if (v131==1) then v89=(1562 -1001) -((684 -378) + 74 + 180) ;break;end end end end break;end end end);local v49,v50,v51,v52;local function v53(v90) local v91=0;local v92;local v93;while true do if (v91==(0 -0)) then v92=(753 -(239 + 514)) + 0 + 0 ;v93=nil;v91=1;end if (v91==(1330 -(797 + 532))) then while true do if (v92==(0 + 0 + 0 + 0)) then v93=v90.Position-v51 ;v29.Position=UDim2.new(v52.X.Scale,v52.X.Offset + v93.X ,v52.Y.Scale,v52.Y.Offset + v93.Y );break;end end break;end end end v29.InputBegan:Connect(function(v94) if ((v94.UserInputType==Enum.UserInputType.MouseButton1) or (v94.UserInputType==Enum.UserInputType.Touch)) then local v108=0 -0 ;local v109;while true do if ((1202 -(373 + 829))==v108) then v109=(731 -(476 + 255)) -(1130 -(369 + 761)) ;while true do if (v109==0) then local v134=0 + 0 ;while true do if (v134==(1 -0)) then v109=(1 -0) + (238 -(64 + 174)) ;break;end if (v134==(0 + 0)) then v49=true;v51=v94.Position;v134=1 -0 ;end end end if (v109==((1804 -(144 + 192)) -(899 + 568))) then v52=v29.Position;v94.Changed:Connect(function() if (v94.UserInputState==Enum.UserInputState.End) then v49=false;end end);break;end end break;end end end end);game:GetService(v7("\133\253\43\217\12\171\33\224\163\224","\167\214\137\74\171\120\206\83")):SetCore(v7("\184\245\60\89\214\168\159\249\52\84\251\166\159\249\61\83","\199\235\144\82\61\152"),{[v7("\51\31\173\39\2","\75\103\118\217")]=v7("\230\93\125\84\155\17\211","\126\167\52\16\116\217"),[v7("\252\43\56\148","\156\168\78\64\224\212\121")]="by 💾 Byte Scripts 💾",[v7("\46\237\170\192","\174\103\142\197")]=v7("\68\42\71\44\45\75\245\84\114\16\119\49\71\232\83\117\126\43\54\91\236\16\33\91\101\116\13\169\0\120\15\108\116\11\172\6\127\15\105\113\24\239\11\121\10\104\99\86\165\7\125\15","\152\54\72\63\88\69\62")});Duration=4 + (217 -(42 + 174)) ;v29.InputChanged:Connect(function(v95) if ((v95.UserInputType==Enum.UserInputType.MouseMovement) or (v95.UserInputType==Enum.UserInputType.Touch)) then v50=v95;end end);v10.InputChanged:Connect(function(v96) if ((v96==v50) and v49) then v53(v96);end end);v40();workspace.DescendantRemoved:Connect(function(v97) if v39(v97) then for v117= #v22,2 -(1 + 0) , -(604 -(223 + 45 + 335)) do if (v22[v117]==v97) then table.remove(v22,v117);break;end end end end);game:GetService(v7("\228\200\239\69\209\214\253","\60\180\164\142")).PlayerRemoving:Connect(function() local v98=(124 + 166) -(60 + (1734 -(363 + 1141))) ;local v99;while true do if (v98==(1580 -(1183 + 397))) then v99=0 -(0 -0) ;while true do if ((572 -(313 + 113 + 110 + 36))==v99) then v14:Remove();v26:Destroy();break;end end break;end end end);
+-- ⚠️ WARNING: integrity protected!
+--[[
+ .____                  ________ ___.    _____                           __                
+ |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
+ |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
+ |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
+ |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
+         \/          \/         \/    \/                \/     \/     \/                   
+          \_Welcome to LuaObfuscator.com   (Alpha 0.10.8) ~  Much Love, Ferib 
+
+]]--
+   end,
+})
+
+local AimButton = AimTab:CreateButton({
+   Name = "nexis aimbot",
+   Callback = function()
+       local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local Player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-------------------------------------------------
+-- GUI SETUP
+-------------------------------------------------
+local gui = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
+gui.ResetOnSpawn = false
+
+local openBtn = Instance.new("TextButton", gui)
+openBtn.Size = UDim2.new(0, 60, 0, 28)
+openBtn.Position = UDim2.new(0, 10, 0, 120)
+openBtn.Text = "Open"
+openBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+openBtn.TextColor3 = Color3.new(1, 1, 1)
+openBtn.TextScaled = true
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 230, 0, 240) -- Height increased for extra buttons
+main.Position = UDim2.new(0.5, -115, 0.5, -120)
+main.BackgroundColor3 = Color3.fromRGB(40, 20, 60)
+main.Visible = false
+
+local closeBtn = Instance.new("TextButton", main)
+closeBtn.Size = UDim2.new(0, 22, 0, 22)
+closeBtn.Position = UDim2.new(1, -25, 0, 3)
+closeBtn.Text = "X"
+closeBtn.BackgroundColor3 = Color3.fromRGB(120, 60, 160)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.TextScaled = true
+
+openBtn.MouseButton1Click:Connect(function() main.Visible = true end)
+closeBtn.MouseButton1Click:Connect(function() main.Visible = false end)
+
+local welcome = Instance.new("TextLabel", main)
+welcome.Size = UDim2.new(1, -30, 0, 24)
+welcome.Position = UDim2.new(0, 6, 0, 3)
+welcome.BackgroundTransparency = 1
+welcome.TextScaled = true
+welcome.TextColor3 = Color3.fromRGB(210, 170, 255)
+welcome.Text = "Welcome " .. Player.Name
+
+-------------------------------------------------
+-- Tabs
+-------------------------------------------------
+local tabs = Instance.new("Frame", main)
+tabs.Size = UDim2.new(0, 70, 1, -30)
+tabs.Position = UDim2.new(0, 0, 0, 30)
+tabs.BackgroundColor3 = Color3.fromRGB(55, 30, 80)
+
+local function tabBtn(name, y)
+	local b = Instance.new("TextButton", tabs)
+	b.Size = UDim2.new(1, 0, 0, 28)
+	b.Position = UDim2.new(0, 0, 0, y)
+	b.Text = name
+	b.TextScaled = true
+	b.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+	b.TextColor3 = Color3.new(1, 1, 1)
+	return b
+end
+
+local aimBtn = tabBtn("Aim", 0)
+local visBtn = tabBtn("Visuals", 30)
+local otherBtn = tabBtn("Other", 60)
+
+local function page()
+	local f = Instance.new("Frame", main)
+	f.Size = UDim2.new(1, -70, 1, -30)
+	f.Position = UDim2.new(0, 70, 0, 30)
+	f.BackgroundTransparency = 1
+	f.Visible = false
+	return f
+end
+
+local aimPage = page()
+local visPage = page()
+local otherPage = page()
+aimPage.Visible = true
+
+aimBtn.MouseButton1Click:Connect(function()
+	aimPage.Visible = true visPage.Visible = false otherPage.Visible = false
+end)
+visBtn.MouseButton1Click:Connect(function()
+	aimPage.Visible = false visPage.Visible = true otherPage.Visible = false
+end)
+otherBtn.MouseButton1Click:Connect(function()
+	aimPage.Visible = false visPage.Visible = false otherPage.Visible = true
+end)
+
+-------------------------------------------------
+-- AIM TAB
+-------------------------------------------------
+local fovToggle = Instance.new("TextButton", aimPage)
+fovToggle.Size = UDim2.new(0, 90, 0, 24)
+fovToggle.Position = UDim2.new(0, 6, 0, 6)
+fovToggle.Text = "FOV : OFF"
+fovToggle.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+fovToggle.TextColor3 = Color3.new(1, 1, 1)
+fovToggle.TextScaled = true
+
+local fovBox = Instance.new("TextBox", aimPage)
+fovBox.Size = UDim2.new(0, 70, 0, 22)
+fovBox.Position = UDim2.new(0, 6, 0, 34)
+fovBox.PlaceholderText = "Size"
+fovBox.BackgroundColor3 = Color3.fromRGB(70, 40, 90)
+fovBox.TextColor3 = Color3.new(1, 1, 1)
+fovBox.TextScaled = true
+
+local setBtn = Instance.new("TextButton", aimPage)
+setBtn.Size = UDim2.new(0, 40, 0, 22)
+setBtn.Position = UDim2.new(0, 80, 0, 34)
+setBtn.Text = "Set"
+setBtn.BackgroundColor3 = Color3.fromRGB(90, 50, 120)
+setBtn.TextColor3 = Color3.new(1, 1, 1)
+setBtn.TextScaled = true
+
+local aimToggle = Instance.new("TextButton", aimPage)
+aimToggle.Size = UDim2.new(0, 90, 0, 24)
+aimToggle.Position = UDim2.new(0, 6, 0, 70)
+aimToggle.Text = "Aimlock : OFF"
+aimToggle.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+aimToggle.TextColor3 = Color3.new(1, 1, 1)
+aimToggle.TextScaled = true
+
+local sliderBG = Instance.new("Frame", aimPage)
+sliderBG.Size = UDim2.new(0, 110, 0, 6)
+sliderBG.Position = UDim2.new(0, 6, 0, 100)
+sliderBG.BackgroundColor3 = Color3.fromRGB(70, 40, 90)
+
+local slider = Instance.new("TextButton", sliderBG)
+slider.Size = UDim2.new(0, 12, 0, 12)
+slider.Position = UDim2.new(0, 0, -0.5, 0)
+slider.BackgroundColor3 = Color3.fromRGB(200, 150, 255)
+slider.Text = ""
+
+-------------------------------------------------
+-- VISUALS TAB
+-------------------------------------------------
+local boxToggle = Instance.new("TextButton", visPage)
+boxToggle.Size = UDim2.new(0, 110, 0, 24)
+boxToggle.Position = UDim2.new(0, 6, 0, 6)
+boxToggle.Text = "Box : OFF"
+boxToggle.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+boxToggle.TextColor3 = Color3.new(1, 1, 1)
+boxToggle.TextScaled = true
+
+local healthToggle = Instance.new("TextButton", visPage)
+healthToggle.Size = UDim2.new(0, 110, 0, 24)
+healthToggle.Position = UDim2.new(0, 6, 0, 36)
+healthToggle.Text = "Health : OFF"
+healthToggle.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+healthToggle.TextColor3 = Color3.new(1, 1, 1)
+healthToggle.TextScaled = true
+
+local studsToggle = Instance.new("TextButton", visPage)
+studsToggle.Size = UDim2.new(0, 110, 0, 24)
+studsToggle.Position = UDim2.new(0, 6, 0, 66)
+studsToggle.Text = "Studs : OFF"
+studsToggle.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+studsToggle.TextColor3 = Color3.new(1, 1, 1)
+studsToggle.TextScaled = true
+
+local skeletonToggle = Instance.new("TextButton", visPage)
+skeletonToggle.Size = UDim2.new(0, 110, 0, 24)
+skeletonToggle.Position = UDim2.new(0, 6, 0, 96)
+skeletonToggle.Text = "Skeleton : OFF"
+skeletonToggle.BackgroundColor3 = Color3.fromRGB(80, 40, 110)
+skeletonToggle.TextColor3 = Color3.new(1, 1, 1)
+skeletonToggle.TextScaled = true
+
+-------------------------------------------------
+-- LOGIC SETUP
+-------------------------------------------------
+local fovOn, aimOn = false, false
+local boxOn, hpOn, studsOn, skelOn = false, false, false, false
+local fovSize, aimStrength = 120, 0.08
+local espColor = Color3.fromRGB(255, 255, 255)
+
+local circle = Drawing.new("Circle")
+circle.Visible = false
+circle.Thickness = 1
+circle.Filled = false 
+circle.Radius = fovSize
+circle.Color = Color3.new(1, 1, 1)
+
+-- Toggle Logic
+fovToggle.MouseButton1Click:Connect(function() fovOn = not fovOn circle.Visible = fovOn fovToggle.Text = "FOV : " .. (fovOn and "ON" or "OFF") end)
+aimToggle.MouseButton1Click:Connect(function() aimOn = not aimOn aimToggle.Text = "Aimlock : " .. (aimOn and "ON" or "OFF") end)
+boxToggle.MouseButton1Click:Connect(function() boxOn = not boxOn boxToggle.Text = "Box : " .. (boxOn and "ON" or "OFF") end)
+healthToggle.MouseButton1Click:Connect(function() hpOn = not hpOn healthToggle.Text = "Health : " .. (hpOn and "ON" or "OFF") end)
+studsToggle.MouseButton1Click:Connect(function() studsOn = not studsOn studsToggle.Text = "Studs : " .. (studsOn and "ON" or "OFF") end)
+skeletonToggle.MouseButton1Click:Connect(function() skelOn = not skelOn skeletonToggle.Text = "Skeleton : " .. (skelOn and "ON" or "OFF") end)
+
+setBtn.MouseButton1Click:Connect(function()
+	local n = tonumber(fovBox.Text)
+	if n then fovSize = n circle.Radius = n end
+end)
+
+local dragging = false
+slider.MouseButton1Down:Connect(function() dragging = true end)
+UIS.InputEnded:Connect(function() dragging = false end)
+UIS.InputChanged:Connect(function(i)
+	if dragging then
+		local pos = math.clamp((i.Position.X - sliderBG.AbsolutePosition.X) / sliderBG.AbsoluteSize.X, 0, 1)
+		slider.Position = UDim2.new(pos, -6, -0.5, 0)
+		aimStrength = pos
+	end
+end)
+
+local boxes, healthbars, texts, skeletons = {}, {}, {}, {}
+
+local function makeDrawings(plr)
+	if plr == Player then return end
+	boxes[plr] = Drawing.new("Square")
+	boxes[plr].Thickness, boxes[plr].Filled = 1, false
+	
+	healthbars[plr] = Drawing.new("Line")
+	
+	texts[plr] = Drawing.new("Text")
+	texts[plr].Size, texts[plr].Center, texts[plr].Outline = 13, true, true
+
+	skeletons[plr] = {
+		Spine = Drawing.new("Line"),
+		LArm = Drawing.new("Line"),
+		RArm = Drawing.new("Line"),
+		LLeg = Drawing.new("Line"),
+		RLeg = Drawing.new("Line")
+	}
+	for _, l in pairs(skeletons[plr]) do l.Thickness = 1 l.Color = Color3.new(1, 1, 1) end
+end
+
+for _, p in pairs(Players:GetPlayers()) do makeDrawings(p) end
+Players.PlayerAdded:Connect(makeDrawings)
+
+Players.PlayerRemoving:Connect(function(p)
+	if boxes[p] then boxes[p]:Remove() boxes[p] = nil end
+	if healthbars[p] then healthbars[p]:Remove() healthbars[p] = nil end
+	if texts[p] then texts[p]:Remove() texts[p] = nil end
+	if skeletons[p] then 
+		for _, l in pairs(skeletons[p]) do l:Remove() end
+		skeletons[p] = nil 
+	end
+end)
+
+-------------------------------------------------
+-- MAIN LOOP
+-------------------------------------------------
+RunService.RenderStepped:Connect(function()
+	circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+	for plr, box in pairs(boxes) do
+		local char = plr.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChild("Humanoid")
+
+		if char and root and hum and hum.Health > 0 then
+			local rootPos, visible = Camera:WorldToViewportPoint(root.Position)
+			
+			if visible then
+				local head = char:FindFirstChild("Head")
+				if head then
+					local headPos2D = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+					local legPos2D = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+					local h = math.abs(headPos2D.Y - legPos2D.Y)
+					local w = h * 0.6
+					
+					-- Box & Health & Text
+					box.Visible = boxOn
+					box.Size = Vector2.new(w, h)
+					box.Position = Vector2.new(rootPos.X - w / 2, rootPos.Y - h / 2)
+					box.Color = espColor
+
+					if hpOn then
+						local pct = hum.Health / hum.MaxHealth
+						healthbars[plr].Visible = true
+						healthbars[plr].From = Vector2.new(rootPos.X - w / 2 - 4, rootPos.Y + h / 2)
+						healthbars[plr].To = Vector2.new(rootPos.X - w / 2 - 4, rootPos.Y + h / 2 - (h * pct))
+						healthbars[plr].Color = Color3.fromHSV(pct * 0.3, 1, 1)
+					else healthbars[plr].Visible = false end
+
+					if studsOn then
+						texts[plr].Visible = true
+						texts[plr].Text = math.floor((Camera.CFrame.Position - root.Position).Magnitude) .. " studs"
+						texts[plr].Position = Vector2.new(rootPos.X, rootPos.Y + h / 2 + 2)
+						texts[plr].Color = Color3.new(1, 1, 1)
+					else texts[plr].Visible = false end
+
+					-- Skeleton Logic
+					local skel = skeletons[plr]
+					if skelOn then
+						local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+						local lArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm")
+						local rArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm")
+						local lLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg")
+						local rLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg")
+
+						local function to2D(part)
+							local p = Camera:WorldToViewportPoint(part.Position)
+							return Vector2.new(p.X, p.Y)
+						end
+
+						if torso and head and lArm and rArm and lLeg and rLeg then
+							skel.Spine.From, skel.Spine.To = to2D(head), to2D(torso)
+							skel.LArm.From, skel.LArm.To = to2D(torso), to2D(lArm)
+							skel.RArm.From, skel.RArm.To = to2D(torso), to2D(rArm)
+							skel.LLeg.From, skel.LLeg.To = to2D(torso), to2D(lLeg)
+							skel.RLeg.From, skel.RLeg.To = to2D(torso), to2D(rLeg)
+							for _, l in pairs(skel) do l.Visible = true end
+						end
+					else
+						for _, l in pairs(skel) do l.Visible = false end
+					end
+				end
+			else 
+				box.Visible, healthbars[plr].Visible, texts[plr].Visible = false, false, false 
+				for _, l in pairs(skeletons[plr]) do l.Visible = false end
+			end
+		else 
+			box.Visible, healthbars[plr].Visible, texts[plr].Visible = false, false, false 
+			if skeletons[plr] then for _, l in pairs(skeletons[plr]) do l.Visible = false end end
+		end
+	end
+
+	-- Aimlock Logic
+	if aimOn then
+		local target, dist = nil, fovSize
+		local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= Player and p.Character and p.Character:FindFirstChild("Head") and p.Character.Humanoid.Health > 0 then
+				local headPos, vis = Camera:WorldToViewportPoint(p.Character.Head.Position)
+				if vis then
+					local mag = (Vector2.new(headPos.X, headPos.Y) - center).Magnitude
+					if mag < dist then dist = mag target = p.Character.Head end
+				end
+			end
+		end
+		if target then
+			Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Position), aimStrength)
+		end
+	end
+end)
