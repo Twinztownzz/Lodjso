@@ -1268,3 +1268,201 @@ end
 SendChatMessage("")
    end,
 })
+local Button = GuisTab:CreateButton({
+   Name = "Button Example",
+   Callback = function()
+   --// Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+--// State
+local enabled = false
+local running = false
+
+--// GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "TrollToggleGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Main draggable frame
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 160, 0, 70)
+main.Position = UDim2.new(0.5, -80, 0.5, -35)
+main.BackgroundColor3 = Color3.fromRGB(30,30,30)
+main.BorderSizePixel = 0
+main.Parent = gui
+main.Active = true
+
+local mainCorner = Instance.new("UICorner", main)
+mainCorner.CornerRadius = UDim.new(0,16)
+
+-- Label
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1,0,0.4,0)
+label.Position = UDim2.new(0,0,0,5)
+label.BackgroundTransparency = 1
+label.Text = "troll"
+label.TextColor3 = Color3.new(1,1,1)
+label.TextScaled = true
+label.Font = Enum.Font.GothamBold
+label.Parent = main
+
+-- Toggle background
+local toggleBg = Instance.new("Frame")
+toggleBg.Size = UDim2.new(0,100,0,40)
+toggleBg.Position = UDim2.new(0.5,-50,0.55,0)
+toggleBg.BackgroundColor3 = Color3.fromRGB(60,60,60)
+toggleBg.BorderSizePixel = 0
+toggleBg.Parent = main
+
+local bgCorner = Instance.new("UICorner", toggleBg)
+bgCorner.CornerRadius = UDim.new(1,0)
+
+-- Toggle circle
+local circle = Instance.new("Frame")
+circle.Size = UDim2.new(0,34,0,34)
+circle.Position = UDim2.new(0,3,0.5,-17)
+circle.BackgroundColor3 = Color3.new(1,1,1)
+circle.BorderSizePixel = 0
+circle.Parent = toggleBg
+
+local circleCorner = Instance.new("UICorner", circle)
+circleCorner.CornerRadius = UDim.new(1,0)
+
+-- Tween settings
+local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+--------------------------------------------------
+-- TELEPORT LOOP (YOUR NEW CODE)
+--------------------------------------------------
+local function teleportLoop()
+	if running then return end
+	running = true
+
+	task.spawn(function()
+		while enabled do
+			task.wait(0.2)
+
+			local char = player.Character
+			if not char then continue end
+
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if not root then continue end
+
+			local trollFolder = workspace:FindFirstChild("TrollPart1")
+			local gudock = workspace:FindFirstChild("Gudock")
+
+			if gudock then
+				root.CFrame = gudock.CFrame
+				task.wait()
+			end
+
+			if trollFolder then
+				local children = trollFolder:GetChildren()
+
+				if children[2] then
+					root.CFrame = children[2].CFrame
+					task.wait()
+				end
+
+				if children[3] then
+					root.CFrame = children[3].CFrame
+					task.wait()
+				end
+
+				local special = trollFolder:FindFirstChild("사라지는 파트")
+				if special then
+					root.CFrame = special.CFrame
+					task.wait()
+				end
+			end
+		end
+
+		running = false
+	end)
+end
+
+--------------------------------------------------
+-- TOGGLE FUNCTION
+--------------------------------------------------
+local function setToggle(state)
+	enabled = state
+
+	if enabled then
+		TweenService:Create(circle, tweenInfo, {
+			Position = UDim2.new(1,-37,0.5,-17)
+		}):Play()
+
+		TweenService:Create(toggleBg, tweenInfo, {
+			BackgroundColor3 = Color3.fromRGB(255,85,0)
+		}):Play()
+
+		teleportLoop()
+	else
+		TweenService:Create(circle, tweenInfo, {
+			Position = UDim2.new(0,3,0.5,-17)
+		}):Play()
+
+		TweenService:Create(toggleBg, tweenInfo, {
+			BackgroundColor3 = Color3.fromRGB(60,60,60)
+		}):Play()
+	end
+end
+
+--------------------------------------------------
+-- CLICK / TOUCH SUPPORT
+--------------------------------------------------
+toggleBg.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		setToggle(not enabled)
+	end
+end)
+
+--------------------------------------------------
+-- DRAG SYSTEM (ANDROID SAFE)
+--------------------------------------------------
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+main.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+main.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+   end,
+})
