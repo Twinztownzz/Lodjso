@@ -1269,7 +1269,7 @@ SendChatMessage("")
    end,
 })
 local Button = GuisTab:CreateButton({
-   Name = "Button Example",
+   Name = "troll is a pinning tower 2 troll",
    Callback = function()
    --// Services
 local Players = game:GetService("Players")
@@ -1465,4 +1465,167 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
    end,
+})
+
+local Button = GuisTab:CreateButton({
+   Name = "tp to player"  Callback = function()
+   --// Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+--------------------------------------------------
+-- GUI SETUP
+--------------------------------------------------
+local gui = Instance.new("ScreenGui")
+gui.Name = "PlayerTeleportGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 250, 0, 120)
+main.Position = UDim2.new(0.5, -125, 0.5, -60)
+main.BackgroundColor3 = Color3.fromRGB(25,25,25)
+main.BorderSizePixel = 0
+main.Parent = gui
+main.Active = true
+
+local corner = Instance.new("UICorner", main)
+corner.CornerRadius = UDim.new(0,16)
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,0,0,35)
+title.BackgroundTransparency = 1
+title.Text = "Teleport To Player"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = main
+
+-- TextBox
+local box = Instance.new("TextBox")
+box.Size = UDim2.new(0.9,0,0,35)
+box.Position = UDim2.new(0.05,0,0.45,0)
+box.PlaceholderText = "Type display or username..."
+box.Text = ""
+box.TextColor3 = Color3.new(1,1,1)
+box.BackgroundColor3 = Color3.fromRGB(40,40,40)
+box.ClearTextOnFocus = false
+box.TextScaled = true
+box.Font = Enum.Font.Gotham
+box.Parent = main
+
+local boxCorner = Instance.new("UICorner", box)
+boxCorner.CornerRadius = UDim.new(0,10)
+
+-- Button
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0.9,0,0,30)
+button.Position = UDim2.new(0.05,0,0.8,0)
+button.Text = "Teleport"
+button.TextColor3 = Color3.new(1,1,1)
+button.BackgroundColor3 = Color3.fromRGB(0,170,255)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.Parent = main
+
+local btnCorner = Instance.new("UICorner", button)
+btnCorner.CornerRadius = UDim.new(0,10)
+
+--------------------------------------------------
+-- PLAYER FIND FUNCTION
+--------------------------------------------------
+local function findPlayerFromText(text)
+	text = string.lower(text)
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		local username = string.lower(plr.Name)
+		local display = string.lower(plr.DisplayName)
+
+		if string.find(username, text, 1, true)
+		or string.find(display, text, 1, true) then
+			return plr
+		end
+	end
+
+	return nil
+end
+
+--------------------------------------------------
+-- TELEPORT FUNCTION
+--------------------------------------------------
+local function teleportToPlayer(target)
+	if not target.Character then return end
+	if not target.Character:FindFirstChild("HumanoidRootPart") then return end
+
+	local myChar = player.Character
+	if not myChar then return end
+
+	local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+	if not myRoot then return end
+
+	myRoot.CFrame = target.Character.HumanoidRootPart.CFrame
+end
+
+--------------------------------------------------
+-- BUTTON CLICK (PC + MOBILE)
+--------------------------------------------------
+button.Activated:Connect(function()
+	local text = box.Text
+	if text == "" then return end
+
+	local target = findPlayerFromText(text)
+
+	if target then
+		teleportToPlayer(target)
+	else
+		box.Text = "Player not found"
+		task.wait(1)
+		box.Text = ""
+	end
+end)
+
+--------------------------------------------------
+-- DRAG SYSTEM (Mobile Friendly)
+--------------------------------------------------
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+main.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = main.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+main.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
 })
