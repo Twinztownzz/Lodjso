@@ -846,7 +846,7 @@ end)
     end,
 	}) 
 local Button = GuisTab:CreateButton({
-   Name = "Button Example",
+   Name = "super ring v4",
    Callback = function()
    local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
